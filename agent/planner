@@ -8,7 +8,7 @@ from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain_community.chat_models import ChatTongyi
 import os
 
-os.environ["DASHSCOPE_API_KEY"] = "your-qwen-api-key"
+os.environ["DASHSCOPE_API_KEY"] = "your-api-key"
 
 def build_meeting_agent():
     llm = ChatTongyi(model_name="qwen-max")
