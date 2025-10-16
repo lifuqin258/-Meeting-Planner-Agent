@@ -1,0 +1,43 @@
+from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
+import base64
+import pickle
+import os
+from email.mime.text import MIMEText
+from config import USE_MOCK, ORGANIZER_EMAIL
+
+def authenticate_gmail():
+    if not os.path.exists("token.pickle"):
+        raise Exception("Gmail auth required. Run calendar tool first to generate token.")
+    with open("token.pickle", "rb") as token:
+        creds = pickle.load(token)
+    return creds
+
+def create_message(sender, to, subject, body):
+    message = MIMEText(body)
+    message["to"] = ", ".join(to) if isinstance(to, list) else to
+    message["from"] = sender
+    message["subject"] = subject
+    return {"raw": base64.urlsafe_b64encode(message.as_bytes()).decode()}
+
+def send_message(service, user_id, message):
+    return service.users().messages().send(userId=user_id, body=message).execute()
+
+# ===== MOCK =====
+def mock_send_email(to, subject, body):
+    print(f"[MOCK EMAIL SENT] To: {to}\nSubject: {subject}\nBody: {body}")
+    return {"id": "mock_email_456"}
+
+# ===== REAL =====
+def real_send_email(to, subject, body):
+    creds = authenticate_gmail()
+    service = build("gmail", "v1", credentials=creds)
+    message = create_message(ORGANIZER_EMAIL, to, subject, body)
+    return send_message(service, "me", message)
+
+# ===== PUBLIC =====
+def send_meeting_email(to, subject, body):
+    if USE_MOCK:
+        return mock_send_email(to, subject, body)
+    else:
+        return real_send_email(to, subject, body)
