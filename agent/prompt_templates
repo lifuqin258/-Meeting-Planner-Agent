@@ -1,0 +1,38 @@
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+
+# 第一阶段：意图解析
+INTENT_EXTRACTION_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", """
+你是一个会议安排专家。请从用户请求中提取以下字段：
+- attendees: 参会人邮箱列表（必须是完整邮箱，如 zhangsan@company.com）
+- natural_time: 用户提到的时间（原样保留，如“下周二下午2点”）
+- duration_minutes: 会议时长（整数，单位分钟）
+- topic: 会议主题
+
+输出必须是严格 JSON 格式，不要任何解释。
+"""),
+    ("human", "{input}")
+])
+
+# 第二阶段：任务规划
+TASK_PLANNER_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", """
+你负责将会议安排任务分解为可执行步骤。可用工具：
+1. parse_time(natural_time) → datetime
+2. check_availability(emails, start, end)
+3. suggest_alternatives(conflicts)
+4. create_event(summary, start, end, attendees)
+5. send_email(to, subject, body)
+
+输出格式：JSON 列表，如：
+[{"tool": "parse_time", "args": {"natural_time": "下周二下午2点"}}]
+"""),
+    ("human", "{input}")
+])
+
+# 第三阶段：用户确认（当有冲突时）
+CONFIRMATION_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", "你正在与用户协商会议时间。请用友好语气提供备选方案。"),
+    ("human", "{input}"),
+    MessagesPlaceholder("agent_scratchpad")
+])
