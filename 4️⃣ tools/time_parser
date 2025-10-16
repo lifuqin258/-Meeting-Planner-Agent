@@ -1,0 +1,18 @@
+import dateparser
+from datetime import datetime, timedelta
+
+def parse_natural_time(text: str, relative_base=None) -> datetime:
+    """
+    将“下周二下午2点”等自然语言解析为 datetime 对象
+    """
+    if relative_base is None:
+        relative_base = datetime.now()
+    result = dateparser.parse(
+        text,
+        settings={
+            'RELATIVE_BASE': relative_base,
+            'PREFER_DATES_FROM': 'future',
+            'TIMEZONE': 'Asia/Shanghai'
+        }
+    )
+    return result if result else relative_base + timedelta(days=1)
