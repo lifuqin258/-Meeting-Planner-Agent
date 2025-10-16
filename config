@@ -1,0 +1,18 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# 替换邮箱
+ORGANIZER_EMAIL = os.getenv("ORGANIZER_EMAIL", "your.email@example.com")
+
+# Google API 配置
+CREDENTIALS_PATH = "credentials.json"
+SCOPES = [
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/gmail.send"
+]
+
+# 是否启用模拟模式
+USE_MOCK = os.getenv("USE_MOCK", "False").lower() == "true"import os
+from dotenv import load_dotenv
