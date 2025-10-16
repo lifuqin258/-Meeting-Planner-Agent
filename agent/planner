@@ -1,0 +1,60 @@
+from datetime import timedelta
+from tools.time_parser import parse_natural_time
+from tools.calendar_tool import check_availability, create_calendar_event
+from tools.email_tool import send_meeting_email
+from agent.prompt_templates import CONFIRMATION_PROMPT
+from langchain_core.runnables import RunnableLambda
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain_community.chat_models import ChatTongyi
+import os
+
+os.environ["DASHSCOPE_API_KEY"] = "your-qwen-api-key"
+
+def build_meeting_agent():
+    llm = ChatTongyi(model_name="qwen-max")
+
+    tools = []
+
+    agent = create_tool_calling_agent(llm, tools, CONFIRMATION_PROMPT)
+    return AgentExecutor(agent=agent, tools=tools, verbose=True)
+
+def plan_and_execute_meeting(intent):
+    attendees = intent["attendees"]
+    natural_time = intent["natural_time"]
+    duration = intent["duration_minutes"]
+    topic = intent["topic"]
+
+    # 1. 解析时间
+    start_time = parse_natural_time(natural_time)
+    end_time = start_time + timedelta(minutes=duration)
+
+    # 2. 检查空闲
+    all_emails = attendees + [intent.get("organizer", "organizer@example.com")]
+    conflicts = check_availability(all_emails, start_time, end_time)
+
+    if conflicts:
+        # 3. 生成备选（简单策略：+1小时）
+        alt_start = start_time + timedelta(hours=1)
+        alt_end = alt_start + timedelta(minutes=duration)
+        alt_conflicts = check_availability(all_emails, alt_start, alt_end)
+        if not alt_conflicts:
+            return {
+                "status": "needs_confirmation",
+                "original": (start_time, end_time),
+                "alternative": (alt_start, alt_end),
+                "conflicts": conflicts
+            }
+        else:
+            raise Exception("No alternative time found")
+
+    # 4. 创建事件
+    event = create_calendar_event(topic, start_time, end_time, attendees)
+
+    # 5. 发送邮件
+    body = f"会议已安排：\n主题：{topic}\n时间：{start_time.strftime('%Y-%m-%d %H:%M')}\n时长：{duration} 分钟"
+    send_meeting_email(attendees, f"会议邀请：{topic}", body)
+
+    return {
+        "status": "success",
+        "event": event
+    }
